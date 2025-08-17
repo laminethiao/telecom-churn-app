@@ -56,7 +56,7 @@ Cette section est destinée aux développeurs et aux utilisateurs qui souhaitent
 
 Clonez le dépôt :
 
-git clone https://github.com/votre-nom-utilisateur/telecom-churn-app.git
+git clone https://github.com/laminethiao/telecom-churn-app.git
 cd telecom-churn-app
 
 Installez les dépendances :
