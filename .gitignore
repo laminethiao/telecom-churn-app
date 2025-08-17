@@ -1,0 +1,13 @@
+Fichiers et dossiers à ignorer par Git
+Fichiers de cache Python
+pycache/
+
+Modèles et autres fichiers binaires
+model/*.pkl
+
+Fichiers spécifiques à l'environnement
+.venv/
+env/
+
+Fichiers spécifiques à Streamlit
+.streamlit/
