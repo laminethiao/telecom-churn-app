@@ -4,8 +4,8 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 from pathlib import Path
-import joblib 
-import os 
+import joblib
+import os
 import plotly.express as px
 
 st.set_page_config(
@@ -16,8 +16,8 @@ st.set_page_config(
 
 # Les fonctions suivantes ne sont pas incluses dans cet exemple,
 # mais leur usage est conservé dans le code.
-# from utils.ui_style import set_background, custom_sidebar_style, apply_prediction_button_style
-# from utils.auth import check_authentication
+ from utils.ui_style import set_background, custom_sidebar_style, apply_prediction_button_style
+ from utils.auth import check_authentication
 
 
 # =============================================
@@ -42,7 +42,7 @@ API_URL = os.getenv("API_CHURN_URL", "[http://127.0.0.1:8000/predict](http://127
 # FONCTIONS UTILITAIRES
 # =============================================
 
-@st.cache_resource # Cache le chargement du modèle pour éviter de le recharger à chaque réexécution
+@st.cache_resource  # Cache le chargement du modèle pour éviter de le recharger à chaque réexécution
 def load_churn_model(model_path, columns_path):
     """Charge le modèle de prédiction et les colonnes d'entraînement."""
     try:
@@ -50,11 +50,13 @@ def load_churn_model(model_path, columns_path):
         training_columns = joblib.load(columns_path)
         return model, training_columns
     except FileNotFoundError:
-        st.error(f"Erreur: Fichier modèle ou colonnes introuvable. Vérifiez les chemins : {model_path} et {columns_path}")
+        st.error(
+            f"Erreur: Fichier modèle ou colonnes introuvable. Vérifiez les chemins : {model_path} et {columns_path}")
         st.stop()
     except Exception as e:
         st.error(f"Erreur lors du chargement du modèle : {e}")
         st.stop()
+
 
 # Chargement initial des modèles
 # Le chargement est protégé par un try-except qui arrêtera l'application en cas d'échec
@@ -62,6 +64,7 @@ try:
     model, training_columns = load_churn_model(MODEL_PATH, COLUMNS_PATH)
 except:
     st.stop()
+
 
 def try_api_prediction(client_data: dict):
     """
@@ -80,10 +83,10 @@ def try_api_prediction(client_data: dict):
             API_URL,
             json=client_data,
             headers={"Content-Type": "application/json"},
-            timeout=10 # Augmenté légèrement le timeout pour plus de robustesse
+            timeout=10  # Augmenté légèrement le timeout pour plus de robustesse
         )
 
-        response.raise_for_status() # Lève une exception pour les codes d'état HTTP 4xx/5xx
+        response.raise_for_status()  # Lève une exception pour les codes d'état HTTP 4xx/5xx
         return response.json(), "API"
 
     except requests.exceptions.ConnectionError:
@@ -101,12 +104,13 @@ def try_api_prediction(client_data: dict):
         return None, None
     except requests.exceptions.RequestException as e:
         st.error(f"Une erreur est survenue lors de la requête API : {e}")
-        st.exception(e) # Affiche les détails de l'exception pour le débogage
+        st.exception(e)  # Affiche les détails de l'exception pour le débogage
         return None, None
     except Exception as e:
         st.error(f"Une erreur inattendue est survenue lors de l'appel API : {e}")
         st.exception(e)
         return None, None
+
 
 def try_local_prediction(client_data: dict, model, training_columns):
     """
@@ -114,14 +118,15 @@ def try_local_prediction(client_data: dict, model, training_columns):
     """
     try:
         input_df = pd.DataFrame([client_data])
-        
+
         # Le code d'encodage one-hot a été omis dans la version fournie,
         # mais la conversion des valeurs 'Oui'/'Non' en 'Yes'/'No' est nécessaire.
         mapping = {'Oui': 'Yes', 'Non': 'No'}
-        for col in ['MultipleLines', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']:
+        for col in ['MultipleLines', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV',
+                    'StreamingMovies']:
             if col in input_df.columns:
                 input_df[col] = input_df[col].map(lambda x: mapping.get(x, x))
-        
+
         # Encodage One-Hot pour le DataFrame
         input_encoded = pd.get_dummies(input_df)
 
@@ -147,6 +152,7 @@ def try_local_prediction(client_data: dict, model, training_columns):
         st.exception(e)
         return None, str(e)
 
+
 def get_feature_importances(model, training_columns, input_data_encoded):
     """
     Extrait les importances des caractéristiques du modèle
@@ -154,7 +160,7 @@ def get_feature_importances(model, training_columns, input_data_encoded):
     """
     if hasattr(model, 'feature_importances_'):
         importances = model.feature_importances_
-        feature_names = training_columns # Les noms des colonnes après encodage one-hot
+        feature_names = training_columns  # Les noms des colonnes après encodage one-hot
 
         # Créer un DataFrame pour faciliter le tri et la visualisation
         feature_importance_df = pd.DataFrame({
@@ -163,7 +169,7 @@ def get_feature_importances(model, training_columns, input_data_encoded):
         }).sort_values(by='Importance', ascending=False)
 
         # On peut ne garder que les N premières caractéristiques les plus importantes
-        return feature_importance_df.head(10) # Retourne les 10 plus importantes
+        return feature_importance_df.head(10)  # Retourne les 10 plus importantes
     return None
 
 
@@ -172,11 +178,11 @@ def get_feature_importances(model, training_columns, input_data_encoded):
 # =============================================
 
 # Appel des fonctions de style
-# set_background()
-# custom_sidebar_style()
-# apply_prediction_button_style()
+set_background()
+custom_sidebar_style()
+apply_prediction_button_style()
 
-# check_authentication()
+check_authentication()
 
 st.title("🔮 Prédiction de Churn Individualisée")
 st.markdown("""
@@ -193,14 +199,18 @@ with st.form("prediction_form"):
         senior = st.checkbox("Senior (65+ ans)", help="Indique si le client est âgé de 65 ans ou plus.")
         partner = st.checkbox("Partenaire", help="Indique si le client a un partenaire.")
         dependents = st.checkbox("Personnes à charge", help="Indique si le client a des personnes à charge.")
-        tenure = st.slider("Ancienneté (mois)", 1, 72, 12, help="Nombre de mois pendant lesquels le client est resté avec la compagnie.")
+        tenure = st.slider("Ancienneté (mois)", 1, 72, 12,
+                           help="Nombre de mois pendant lesquels le client est resté avec la compagnie.")
 
     with col2:
         st.subheader("Services & Contrat")
-        contract = st.selectbox("Type de contrat", ["Month-to-month", "One year", "Two year"], help="Durée du contrat du client.")
-        internet = st.selectbox("Service Internet", ["DSL", "Fiber optic", "No"], help="Type de service Internet souscrit.")
+        contract = st.selectbox("Type de contrat", ["Month-to-month", "One year", "Two year"],
+                                help="Durée du contrat du client.")
+        internet = st.selectbox("Service Internet", ["DSL", "Fiber optic", "No"],
+                                help="Type de service Internet souscrit.")
         payment = st.selectbox("Méthode de paiement",
-                               ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"],
+                               ["Electronic check", "Mailed check", "Bank transfer (automatic)",
+                                "Credit card (automatic)"],
                                help="Méthode de paiement préférée du client.")
         monthly_charges = st.number_input("Charges mensuelles ($)", min_value=18.0, max_value=150.0, value=65.5,
                                           step=0.5, format="%.2f", help="Montant total facturé au client chaque mois.")
@@ -212,19 +222,27 @@ with st.form("prediction_form"):
     with st.expander("Services optionnels"):
         services_col1, services_col2 = st.columns(2)
         with services_col1:
-            phone = st.checkbox("Service téléphonique", value=True, help="Indique si le client a un service téléphonique.")
-            multiple_lines = st.checkbox("Lignes multiples", help="Indique si le client a plusieurs lignes téléphoniques.")
-            online_security = st.checkbox("Sécurité en ligne", help="Indique si le client a souscrit à un service de sécurité en ligne.")
-            online_backup = st.checkbox("Sauvegarde en ligne", help="Indique si le client a souscrit à un service de sauvegarde en ligne.")
+            phone = st.checkbox("Service téléphonique", value=True,
+                                help="Indique si le client a un service téléphonique.")
+            multiple_lines = st.checkbox("Lignes multiples",
+                                         help="Indique si le client a plusieurs lignes téléphoniques.")
+            online_security = st.checkbox("Sécurité en ligne",
+                                          help="Indique si le client a souscrit à un service de sécurité en ligne.")
+            online_backup = st.checkbox("Sauvegarde en ligne",
+                                        help="Indique si le client a souscrit à un service de sauvegarde en ligne.")
         with services_col2:
-            device_protection = st.checkbox("Protection appareil", help="Indique si le client a souscrit à un service de protection d'appareil.")
-            tech_support = st.checkbox("Support technique", help="Indique si le client a souscrit à un service de support technique.")
-            streaming_tv = st.checkbox("TV en streaming", help="Indique si le client a souscrit à un service de streaming TV.")
-            streaming_movies = st.checkbox("Films en streaming", help="Indique si le client a souscrit à un service de streaming de films.")
+            device_protection = st.checkbox("Protection appareil",
+                                            help="Indique si le client a souscrit à un service de protection d'appareil.")
+            tech_support = st.checkbox("Support technique",
+                                       help="Indique si le client a souscrit à un service de support technique.")
+            streaming_tv = st.checkbox("TV en streaming",
+                                       help="Indique si le client a souscrit à un service de streaming TV.")
+            streaming_movies = st.checkbox("Films en streaming",
+                                           help="Indique si le client a souscrit à un service de streaming de films.")
 
-    paperless = st.checkbox("Facturation électronique", help="Indique si le client reçoit ses factures par voie électronique.")
+    paperless = st.checkbox("Facturation électronique",
+                            help="Indique si le client reçoit ses factures par voie électronique.")
     submitted = st.form_submit_button("Lancer la prédiction", type="primary")
-
 
 # =============================================
 # LOGIQUE DE PRÉDICTION
@@ -232,9 +250,10 @@ with st.form("prediction_form"):
 if submitted:
     # Validation de la cohérence des charges totales
     expected_total_charges = round(tenure * monthly_charges, 2)
-    if tenure > 0 and abs(total_charges - expected_total_charges) > 1.0: # Tolérance de 1.0 pour les petites différences
+    if tenure > 0 and abs(
+            total_charges - expected_total_charges) > 1.0:  # Tolérance de 1.0 pour les petites différences
         st.warning(f"""
-        ⚠️ **Incohérence détectée dans les charges totales !**
+       ⚠️ **Incohérence détectée dans les charges totales !**
         Basé sur l'ancienneté ({tenure} mois) et les charges mensuelles (${monthly_charges:.2f}),
         les charges totales attendues seraient d'environ **${expected_total_charges:.2f}**.
         La valeur saisie (${total_charges:.2f}) pourrait affecter la précision de la prédiction.
@@ -266,9 +285,9 @@ if submitted:
     progress_text = "Calcul de la prédiction en cours..."
     progress_bar = st.progress(0, text=progress_text)
     for percent_complete in range(100):
-        time.sleep(0.01) # Réduit le délai pour une progression plus rapide
+        time.sleep(0.01)  # Réduit le délai pour une progression plus rapide
         progress_bar.progress(percent_complete + 1, text=progress_text)
-    progress_bar.empty() # Supprime la barre une fois terminée
+    progress_bar.empty()  # Supprime la barre une fois terminée
 
     # Tentative de prédiction via API
     result, source = try_api_prediction(client_data)
@@ -286,7 +305,7 @@ if submitted:
     st.success(f"Prédiction réussie via {source.upper()}")
     prediction = result["prediction"]
     confidence = float(result["probabilité"].replace("%", ""))
-    feature_importances_df = result.get("feature_importances") # Récupérer les importances si disponibles
+    feature_importances_df = result.get("feature_importances")  # Récupérer les importances si disponibles
 
     # Onglets de résultats
     tab1, tab2 = st.tabs(["Résultat", "Recommandations & Facteurs Clés"])
@@ -294,12 +313,15 @@ if submitted:
     with tab1:
         # Affichage de la prédiction
         if "désabonner" in prediction:
-            st.markdown(f'<div style="background-color:#ffe0e0; padding:15px; border-radius:10px; text-align:center; font-size:1.5em; color:#cc0000; font-weight:bold;">⚠️ {prediction}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="background-color:#ffe0e0; padding:15px; border-radius:10px; text-align:center; font-size:1.5em; color:#cc0000; font-weight:bold;">⚠️ {prediction}</div>',
+                unsafe_allow_html=True)
         else:
-            st.markdown(f'<div style="background-color:#e0ffe0; padding:15px; border-radius:10px; text-align:center; font-size:1.5em; color:#008000; font-weight:bold;">✅ {prediction}</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div style="background-color:#e0ffe0; padding:15px; border-radius:10px; text-align:center; font-size:1.5em; color:#008000; font-weight:bold;">✅ {prediction}</div>',
+                unsafe_allow_html=True)
 
         st.markdown(f"**Niveau de confiance :** {confidence:.2f}%")
-
 
         fig = go.Figure(go.Indicator(
             mode="gauge+number",
@@ -308,11 +330,11 @@ if submitted:
             title={'text': "Niveau de Confiance de la Prédiction", 'font': {'size': 20}},
             gauge={
                 'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkblue"},
-                'bar': {'color': "#4a00e0"}, # Couleur de la barre de jauge
+                'bar': {'color': "#4a00e0"},  # Couleur de la barre de jauge
                 'steps': [
-                    {'range': [0, 50], 'color': "lightcoral"}, # Risque élevé
-                    {'range': [50, 75], 'color': "khaki"},    # Risque moyen
-                    {'range': [75, 100], 'color': "lightgreen"} # Faible risque
+                    {'range': [0, 50], 'color': "lightcoral"},  # Risque élevé
+                    {'range': [50, 75], 'color': "khaki"},  # Risque moyen
+                    {'range': [75, 100], 'color': "lightgreen"}  # Faible risque
                 ],
                 'threshold': {
                     'line': {'color': "red", 'width': 4},
@@ -327,7 +349,8 @@ if submitted:
         st.subheader("Recommandations et Facteurs Clés")
 
         if "désabonner" in prediction:
-            st.warning("Ce client présente un risque élevé de désabonnement. Voici des actions et les facteurs qui influencent cette prédiction :")
+            st.warning(
+                "Ce client présente un risque élevé de désabonnement. Voici des actions et les facteurs qui influencent cette prédiction :")
             st.markdown("""
             * **Offres personnalisées :** Proposez des forfaits adaptés à leur consommation réelle.
             * **Support proactif :** Contactez le client pour anticiper ses besoins ou résoudre des problèmes avant qu'il ne se plaigne.
@@ -335,7 +358,8 @@ if submitted:
             * **Analyse de la concurrence :** Comprenez pourquoi les clients partent chez les concurrents.
             """)
         else:
-            st.info("Ce client est susceptible de rester. Voici des stratégies pour renforcer sa fidélité et les facteurs clés :")
+            st.info(
+                "Ce client est susceptible de rester. Voici des stratégies pour renforcer sa fidélité et les facteurs clés :")
             st.markdown("""
             * **Valorisation :** Mettez en avant les bénéfices de leur abonnement actuel.
             * **Upselling/Cross-selling :** Proposez des services complémentaires pour augmenter leur valeur client.
@@ -354,11 +378,10 @@ if submitted:
                 title="Importance des Caractéristiques du Modèle",
                 color_discrete_sequence=["#4a00e0"]
             )
-            fig_importance.update_layout(yaxis={'categoryorder':'total ascending'}) # Pour trier les barres
+            fig_importance.update_layout(yaxis={'categoryorder': 'total ascending'})  # Pour trier les barres
             st.plotly_chart(fig_importance, use_container_width=True)
         else:
             st.info("Les importances des caractéristiques ne sont pas disponibles pour le modèle API ou local.")
-
 
 # =============================================
 # Sidebar
@@ -374,7 +397,6 @@ with st.sidebar:
     - **Recall**: 79 %
     - **F1-score**: 78 %
     """)
-
 
     # Remplacez "URL_DE_VOTRE_RAPPORT" par l'URL de publication de votre rapport Power BI
     power_bi_report_url = "[https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi](https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi)"
