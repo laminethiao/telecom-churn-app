@@ -31,8 +31,8 @@ from utils.ui_style import set_background, custom_sidebar_style, apply_predictio
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Chemins des modèles
-FALLBACK_MODEL_PATH = PROJECT_ROOT / "APP/model/modele_random_forest.pkl"
-TRAINING_COLUMNS_PATH = PROJECT_ROOT / "APP/model/training_columns.pkl"
+FALLBACK_MODEL_PATH = PROJECT_ROOT / "app/model/modele_random_forest.pkl"
+TRAINING_COLUMNS_PATH = PROJECT_ROOT / "app/model/training_columns.pkl"
 
 # URL de l'API : Lire depuis une variable d'environnement pour la flexibilité de déploiement
 
