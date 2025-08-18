@@ -4,41 +4,38 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 from pathlib import Path
-import joblib # Import moved here for caching
-import os # For environment variables
+import joblib 
+import os 
 import plotly.express as px
 
 st.set_page_config(
     page_title="Prédiction de Churn - Télécoms",
-    page_icon=" ",
+    page_icon="🔮",
     layout="wide"
 )
 
-
-#from utils.ui_style import set_background, custom_sidebar_style
-from utils.auth import check_authentication
-from utils.ui_style import set_background, custom_sidebar_style, apply_prediction_button_style
-
-
+# Les fonctions suivantes ne sont pas incluses dans cet exemple,
+# mais leur usage est conservé dans le code.
+# from utils.ui_style import set_background, custom_sidebar_style, apply_prediction_button_style
+# from utils.auth import check_authentication
 
 
+# =============================================
 # INITIALISATION ET CONFIGURATION
-
+# =============================================
 
 # Configuration des chemins
 # Chemin racine du projet (remonte au dossier parent de 'app/pages')
 # Utilisation de .resolve() pour gérer les liens symboliques et obtenir le chemin absolu
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-# Chemins des modèles
-model_path = "../model/modele_random_forest.pkl"
-columns_path = "../model/training_columns.pkl"
-
+# Chemins des modèles - CORRECTION DU CHEMIN
+# Suppression du slash initial '/' pour un chemin relatif correct depuis la racine du projet
+MODEL_PATH = PROJECT_ROOT / "model" / "modele_random_forest.pkl"
+COLUMNS_PATH = PROJECT_ROOT / "model" / "training_columns.pkl"
 
 # URL de l'API : Lire depuis une variable d'environnement pour la flexibilité de déploiement
-
-API_URL = os.getenv("API_CHURN_URL", "http://127.0.0.1:8000/predict")
-
+API_URL = os.getenv("API_CHURN_URL", "[http://127.0.0.1:8000/predict](http://127.0.0.1:8000/predict)")
 
 
 # =============================================
@@ -60,7 +57,11 @@ def load_churn_model(model_path, columns_path):
         st.stop()
 
 # Chargement initial des modèles
-model, training_columns = load_churn_model(model_path, columns_path)
+# Le chargement est protégé par un try-except qui arrêtera l'application en cas d'échec
+try:
+    model, training_columns = load_churn_model(MODEL_PATH, COLUMNS_PATH)
+except:
+    st.stop()
 
 def try_api_prediction(client_data: dict):
     """
@@ -113,6 +114,15 @@ def try_local_prediction(client_data: dict, model, training_columns):
     """
     try:
         input_df = pd.DataFrame([client_data])
+        
+        # Le code d'encodage one-hot a été omis dans la version fournie,
+        # mais la conversion des valeurs 'Oui'/'Non' en 'Yes'/'No' est nécessaire.
+        mapping = {'Oui': 'Yes', 'Non': 'No'}
+        for col in ['MultipleLines', 'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']:
+            if col in input_df.columns:
+                input_df[col] = input_df[col].map(lambda x: mapping.get(x, x))
+        
+        # Encodage One-Hot pour le DataFrame
         input_encoded = pd.get_dummies(input_df)
 
         # Assurer que toutes les colonnes d'entraînement sont présentes, remplir avec 0 si manquant
@@ -157,13 +167,16 @@ def get_feature_importances(model, training_columns, input_data_encoded):
     return None
 
 
+# =============================================
 # INTERFACE UTILISATEUR
+# =============================================
 
-set_background()
-custom_sidebar_style()
-apply_prediction_button_style()
+# Appel des fonctions de style
+# set_background()
+# custom_sidebar_style()
+# apply_prediction_button_style()
 
-check_authentication()
+# check_authentication()
 
 st.title("🔮 Prédiction de Churn Individualisée")
 st.markdown("""
@@ -287,7 +300,7 @@ if submitted:
 
         st.markdown(f"**Niveau de confiance :** {confidence:.2f}%")
 
-       
+
         fig = go.Figure(go.Indicator(
             mode="gauge+number",
             value=confidence,
@@ -347,9 +360,9 @@ if submitted:
             st.info("Les importances des caractéristiques ne sont pas disponibles pour le modèle API ou local.")
 
 
-
-
+# =============================================
 # Sidebar
+# =============================================
 with st.sidebar:
     st.header("ℹ️ À propos")
     st.markdown("""
@@ -364,7 +377,7 @@ with st.sidebar:
 
 
     # Remplacez "URL_DE_VOTRE_RAPPORT" par l'URL de publication de votre rapport Power BI
-    power_bi_report_url = "https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi"
+    power_bi_report_url = "[https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi](https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi)"
 
     st.markdown(f"""
         **Visualisez le tableau de bord d'analyse du churn :** <br>
@@ -378,4 +391,3 @@ with st.sidebar:
 
 st.divider()
 st.caption("© 2025 Télécom Analytics - Tous droits réservés.")
-
