@@ -31,8 +31,9 @@ from utils.ui_style import set_background, custom_sidebar_style, apply_predictio
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Chemins des modèles
-FALLBACK_MODEL_PATH = PROJECT_ROOT / "app/model/modele_random_forest.pkl"
-TRAINING_COLUMNS_PATH = PROJECT_ROOT / "app/model/training_columns.pkl"
+model_path = "../model/modele_random_forest.pkl"
+columns_path = "../model/training_columns.pkl"
+
 
 # URL de l'API : Lire depuis une variable d'environnement pour la flexibilité de déploiement
 
@@ -59,7 +60,7 @@ def load_churn_model(model_path, columns_path):
         st.stop()
 
 # Chargement initial des modèles
-model, training_columns = load_churn_model(FALLBACK_MODEL_PATH, TRAINING_COLUMNS_PATH)
+model, training_columns = load_churn_model(model_path, columns_path)
 
 def try_api_prediction(client_data: dict):
     """
