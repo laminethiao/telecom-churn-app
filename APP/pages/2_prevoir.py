@@ -16,8 +16,8 @@ st.set_page_config(
 
 # Les fonctions suivantes ne sont pas incluses dans cet exemple,
 # mais leur usage est conservé dans le code.
- from utils.ui_style import set_background, custom_sidebar_style, apply_prediction_button_style
- from utils.auth import check_authentication
+from utils.ui_style import set_background, custom_sidebar_style, apply_prediction_button_style
+from utils.auth import check_authentication
 
 
 # =============================================
@@ -253,7 +253,7 @@ if submitted:
     if tenure > 0 and abs(
             total_charges - expected_total_charges) > 1.0:  # Tolérance de 1.0 pour les petites différences
         st.warning(f"""
-       ⚠️ **Incohérence détectée dans les charges totales !**
+        ⚠️ **Incohérence détectée dans les charges totales !**
         Basé sur l'ancienneté ({tenure} mois) et les charges mensuelles (${monthly_charges:.2f}),
         les charges totales attendues seraient d'environ **${expected_total_charges:.2f}**.
         La valeur saisie (${total_charges:.2f}) pourrait affecter la précision de la prédiction.
