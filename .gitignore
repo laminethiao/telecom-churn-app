@@ -11,3 +11,6 @@ env/
 
 Fichiers spécifiques à Streamlit
 .streamlit/
+# Ignorer les dossiers de captures et de rapports
+capture_Dashbor_power_bi/
+capture_app_streamli/
