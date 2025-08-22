@@ -35,7 +35,7 @@ MODEL_PATH = PROJECT_ROOT / "model" / "modele_random_forest.pkl"
 COLUMNS_PATH = PROJECT_ROOT / "model" / "training_columns.pkl"
 
 # URL de l'API : Lire depuis une variable d'environnement pour la flexibilité de déploiement
-API_URL = os.getenv("API_CHURN_URL", "[http://127.0.0.1:8000/predict](http://127.0.0.1:8000/predict)")
+API_URL = os.getenv("API_CHURN_URL", "https://telecom-churn-api.vercel.app/predict")
 
 
 # =============================================
