@@ -1,150 +1,79 @@
-import os
-import requests
+# main.py
+from fastapi import FastAPI
+from pydantic import BaseModel
 import joblib
 import pandas as pd
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Dict, Any
+import os
+
+# Définition du modèle de données d'entrée
+class Item(BaseModel):
+    Age: float
+    Gender: str
+    Country: str
+    Education_Level: str
+    Profession: str
+    Annual_Salary: float
+    Experience_Years: float
+    Spending_Score: float
+    Family_Size: float
 
 # Initialisation de l'application FastAPI
 app = FastAPI()
 
-# URLs pour télécharger le modèle et les colonnes d'entraînement depuis Google Drive.
-# Ces URLs ont été modifiées pour permettre un téléchargement direct.
-MODEL_URL = "https://drive.google.com/uc?export=download&id=1XuEraj-uIGymTORYwJ65r2tTOwTv09wh"
-COLUMNS_URL = "https://drive.google.com/uc?export=download&id=1Wr6lagz3Wp6crOs81RzdycNs4DBagQJs"
+# Chargement du modèle et des colonnes de l'encodeur
+# Les chemins d'accès sont ajustés pour correspondre à la structure de votre projet.
+try:
+    # Charger le modèle joblib depuis le dossier 'model'
+    model = joblib.load('model/modele_random_forest.pkl')
 
-# Variables pour le modèle et les colonnes, initialisées à None
-model = None
-training_columns = None
+    # Charger les noms de colonnes de l'encodeur depuis le dossier 'model'
+    feature_columns = joblib.load('model/training_columns.pkl')
+except FileNotFoundError as e:
+    print(f"Erreur: Fichier introuvable. Assurez-vous que les fichiers '.pkl' sont bien dans le sous-dossier 'model'. Détails: {e}")
+    # En cas d'échec du chargement, le programme ne peut pas continuer.
+    model = None
+    feature_columns = None
 
-
-def download_file(url: str, filename: str):
-    """
-    Télécharge un fichier depuis une URL et le sauvegarde localement.
-    Cette fonction est essentielle pour récupérer le modèle et les colonnes.
-    """
-    try:
-        response = requests.get(url, stream=True)
-        response.raise_for_status()  # Lève une exception pour les erreurs HTTP 4xx/5xx
-        with open(filename, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        print(f"Fichier {filename} téléchargé avec succès.")
-    except Exception as e:
-        # En cas d'échec, on lève une erreur critique pour arrêter le déploiement
-        raise RuntimeError(f"Erreur lors du téléchargement de {filename}: {str(e)}")
-
-
-# Fonction qui s'exécute au démarrage de l'application Vercel
-@app.on_event("startup")
-def load_resources():
-    global model, training_columns
-    try:
-        # Crée un dossier temporaire pour stocker les fichiers téléchargés
-        if not os.path.exists("temp"):
-            os.makedirs("temp")
-
-        # Définir les chemins de fichiers locaux
-        model_path = "temp/modele_random_forest.pkl"
-        columns_path = "temp/training_columns.pkl"
-
-        # Télécharger et charger le modèle et les colonnes
-        download_file(MODEL_URL, model_path)
-        download_file(COLUMNS_URL, columns_path)
-
-        model = joblib.load(model_path)
-        training_columns = joblib.load(columns_path)
-
-        # Vérification de l'attribut du modèle pour s'assurer qu'il est correct
-        if not hasattr(model, 'feature_importances_'):
-            raise AttributeError("Le modèle chargé ne contient pas 'feature_importances_'.")
-
-        print("Modèle et colonnes chargés avec succès au démarrage de l'application.")
-    except Exception as e:
-        # Afficher l'erreur sans arrêter le serveur, mais en indiquant l'échec
-        print(f"Échec critique du chargement des ressources: {str(e)}")
-
-
-# Pydantic model pour les données d'entrée du client
-class ClientData(BaseModel):
-    gender: str
-    SeniorCitizen: int
-    Partner: str
-    Dependents: str
-    tenure: int
-    PhoneService: str
-    MultipleLines: str
-    InternetService: str
-    OnlineSecurity: str
-    OnlineBackup: str
-    DeviceProtection: str
-    TechSupport: str
-    StreamingTV: str
-    StreamingMovies: str
-    Contract: str
-    PaperlessBilling: str
-    PaymentMethod: str
-    MonthlyCharges: float
-    TotalCharges: float
-
-
-# Route de prédiction
+# Définition de l'endpoint pour la prédiction
 @app.post("/predict")
-def predict(data: ClientData):
-    global model, training_columns
-    # S'assurer que le modèle est bien chargé avant de tenter une prédiction
-    if model is None or training_columns is None:
-        raise HTTPException(status_code=503, detail="Le modèle n'est pas encore chargé. Veuillez réessayer.")
+def predict(item: Item):
+    if model is None or feature_columns is None:
+        return {"error": "Modèle ou colonnes non chargés. Veuillez vérifier la présence des fichiers."}
 
-    try:
-        input_data = pd.DataFrame([data.dict()])
-        input_encoded = pd.get_dummies(input_data)
-        input_encoded = input_encoded.reindex(columns=training_columns, fill_value=0)
+    # Création d'un DataFrame à partir des données de l'utilisateur
+    input_data = pd.DataFrame([item.dict()])
 
-        # Prédiction et calcul des probabilités
-        prediction_raw = model.predict(input_encoded)[0]
-        proba_raw = model.predict_proba(input_encoded)[0]
-        class_index = model.classes_.tolist().index(prediction_raw)
-        confidence = round(proba_raw[class_index] * 100, 2)
+    # Ajout des colonnes de l'encodeur pour assurer la compatibilité
+    # Un "one-hot encoding" est simulé en ajoutant des colonnes de zéros
+    # pour les catégories manquantes et en remplissant les valeurs existantes.
+    # On commence par créer des colonnes de zéros pour toutes les colonnes attendues par le modèle.
+    input_df = pd.DataFrame(0, index=[0], columns=feature_columns)
 
-        prediction_message = "Le client va se désabonner" if prediction_raw == "Yes" else "Le client va rester"
+    # Puis, on remplit les valeurs des colonnes numériques
+    numerical_features = ['Age', 'Annual_Salary', 'Experience_Years', 'Spending_Score', 'Family_Size']
+    for col in numerical_features:
+        if col in input_data.columns:
+            input_df[col] = input_data[col].values[0]
 
-        feature_importances_data = None
-        if hasattr(model, 'feature_importances_'):
-            importances = model.feature_importances_
-            feature_importance_df = pd.DataFrame({
-                'Feature': training_columns,
-                'Importance': importances
-            }).sort_values(by='Importance', ascending=False)
-            feature_importances_data = feature_importance_df.head(10).to_dict(orient='records')
+    # Et les colonnes catégorielles
+    categorical_features = ['Gender', 'Country', 'Education_Level', 'Profession']
+    for col in categorical_features:
+        if col in input_data.columns:
+            # Création du nom de la colonne encodée (par exemple, 'Gender_Male')
+            col_name = f"{col}_{input_data[col].values[0]}"
+            if col_name in input_df.columns:
+                input_df[col_name] = 1
 
-        return {
-            "prediction": prediction_message,
-            "probabilité": f"{confidence}%",
-            "feature_importances": feature_importances_data
-        }
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Erreur lors de la prédiction: {str(e)}")
+    # Prédiction avec le modèle
+    prediction = model.predict(input_df)
 
+    # Le modèle prédit 0 (faible valeur) ou 1 (grande valeur).
+    # On convertit cette prédiction en une chaîne de caractères lisible.
+    prediction_label = "High Value" if prediction[0] == 1 else "Low Value"
 
-# Route racine
-@app.get("/")
-def read_root():
-    return {"message": "API de prédiction de churn opérationnelle"}
+    return {"prediction": prediction_label}
 
-
-# Configuration CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Point d'entrée pour le développement local
+# Point d'entrée de l'application pour le lancement
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
