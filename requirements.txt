@@ -50,3 +50,5 @@ urllib3==2.5.0
 watchdog==6.0.0
 xgboost==2.1.0
 gunicorn
+fastapi
+uvicorn
