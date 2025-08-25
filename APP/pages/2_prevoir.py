@@ -35,7 +35,7 @@ MODEL_PATH = PROJECT_ROOT / "model" / "modele_random_forest.pkl"
 COLUMNS_PATH = PROJECT_ROOT / "model" / "training_columns.pkl"
 
 # URL de l'API : Lire depuis une variable d'environnement pour la flexibilité de déploiement
-API_URL = "https://telecom-churn-app-production.up.railway.app/predict"
+API_URL = "https://telecom-churn-app-production-edab.up.railway.app/predict"
 
 
 # =============================================
