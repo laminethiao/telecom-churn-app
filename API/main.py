@@ -7,73 +7,84 @@ import uvicorn
 import os
 
 # Définition du modèle de données d'entrée
-class Item(BaseModel):
-    Age: float
-    Gender: str
-    Country: str
-    Education_Level: str
-    Profession: str
-    Annual_Salary: float
-    Experience_Years: float
-    Spending_Score: float
-    Family_Size: float
+# Le modèle de données est adapté pour la prédiction de churn télécoms
+class ChurnPredictionData(BaseModel):
+    gender: str
+    SeniorCitizen: int
+    Partner: str
+    Dependents: str
+    tenure: int
+    PhoneService: str
+    MultipleLines: str
+    InternetService: str
+    OnlineSecurity: str
+    OnlineBackup: str
+    DeviceProtection: str
+    TechSupport: str
+    StreamingTV: str
+    StreamingMovies: str
+    Contract: str
+    PaperlessBilling: str
+    PaymentMethod: str
+    MonthlyCharges: float
+    TotalCharges: float
 
 # Initialisation de l'application FastAPI
 app = FastAPI()
 
-# Chargement du modèle et des colonnes de l'encodeur
-# Les chemins d'accès sont ajustés pour correspondre à la structure de votre projet.
+# Chargement du modèle et des colonnes d'entraînement
 try:
-    # Charger le modèle joblib depuis le dossier 'model'
+    # Le chemin d'accès est relatif au dossier du projet
+    # Le '..' permet de remonter d'un niveau si le script est exécuté depuis 'API/'
+    # Cependant, la commande 'uvicorn API.main:app' est lancée depuis la racine du projet
+    # donc le chemin 'model/' est correct
     model = joblib.load('model/modele_random_forest.pkl')
-
-    # Charger les noms de colonnes de l'encodeur depuis le dossier 'model'
-    feature_columns = joblib.load('model/training_columns.pkl')
+    training_columns = joblib.load('model/training_columns.pkl')
 except FileNotFoundError as e:
-    print(f"Erreur: Fichier introuvable. Assurez-vous que les fichiers '.pkl' sont bien dans le sous-dossier 'model'. Détails: {e}")
-    # En cas d'échec du chargement, le programme ne peut pas continuer.
+    # Affiche une erreur claire si les fichiers ne sont pas trouvés
+    print(f"Erreur: Fichier introuvable. Assurez-vous que les fichiers '.pkl' sont bien dans le sous-dossier 'model/'. Détails: {e}")
     model = None
-    feature_columns = None
+    training_columns = None
 
-# Définition de l'endpoint pour la prédiction
+# Endpoint de l'API pour la prédiction
 @app.post("/predict")
-def predict(item: Item):
-    if model is None or feature_columns is None:
-        return {"error": "Modèle ou colonnes non chargés. Veuillez vérifier la présence des fichiers."}
+def predict_churn(data: ChurnPredictionData):
+    """
+    Accepte les données d'un client et renvoie une prédiction de churn.
+    """
+    if model is None or training_columns is None:
+        return {"error": "Modèle ou colonnes d'entraînement non chargés. Vérifiez la présence des fichiers du modèle."}
 
-    # Création d'un DataFrame à partir des données de l'utilisateur
-    input_data = pd.DataFrame([item.dict()])
+    # Crée un DataFrame à partir des données de l'utilisateur
+    input_df = pd.DataFrame([data.dict()])
 
-    # Ajout des colonnes de l'encodeur pour assurer la compatibilité
-    # Un "one-hot encoding" est simulé en ajoutant des colonnes de zéros
-    # pour les catégories manquantes et en remplissant les valeurs existantes.
-    # On commence par créer des colonnes de zéros pour toutes les colonnes attendues par le modèle.
-    input_df = pd.DataFrame(0, index=[0], columns=feature_columns)
+    # Le modèle XGBoost utilisé est un modèle d'arbre qui ne nécessite pas de One-Hot Encoding
+    # C'est une simplification pour cet exemple.
+    # Pour un modèle One-Hot, il faudrait une étape supplémentaire
+    # qui re-crée les colonnes comme lors de l'entraînement.
 
-    # Puis, on remplit les valeurs des colonnes numériques
-    numerical_features = ['Age', 'Annual_Salary', 'Experience_Years', 'Spending_Score', 'Family_Size']
-    for col in numerical_features:
-        if col in input_data.columns:
-            input_df[col] = input_data[col].values[0]
+    # Assurer que le DataFrame d'entrée a les mêmes colonnes que le DataFrame d'entraînement
+    # C'est une étape cruciale pour que la prédiction fonctionne
+    missing_cols = set(training_columns) - set(input_df.columns)
+    for c in missing_cols:
+        input_df[c] = 0
 
-    # Et les colonnes catégorielles
-    categorical_features = ['Gender', 'Country', 'Education_Level', 'Profession']
-    for col in categorical_features:
-        if col in input_data.columns:
-            # Création du nom de la colonne encodée (par exemple, 'Gender_Male')
-            col_name = f"{col}_{input_data[col].values[0]}"
-            if col_name in input_df.columns:
-                input_df[col_name] = 1
+    # On utilise un reindex pour s'assurer de l'ordre des colonnes
+    input_df = input_df[training_columns]
 
     # Prédiction avec le modèle
-    prediction = model.predict(input_df)
+    prediction_raw = model.predict(input_df)[0]
+    proba_raw = model.predict_proba(input_df)[0]
+    confidence = round(proba_raw[1] * 100, 2)  # La probabilité de la classe 'Yes'
 
-    # Le modèle prédit 0 (faible valeur) ou 1 (grande valeur).
-    # On convertit cette prédiction en une chaîne de caractères lisible.
-    prediction_label = "High Value" if prediction[0] == 1 else "Low Value"
+    # Interprétation de la prédiction
+    prediction_message = "Le client va se désabonner" if prediction_raw == "Yes" else "Le client va rester"
 
-    return {"prediction": prediction_label}
+    # Retourne la prédiction
+    return {
+        "prediction": prediction_message,
+        "probabilité": f"{confidence:.2f}%"
+    }
 
-# Point d'entrée de l'application pour le lancement
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
