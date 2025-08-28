@@ -398,18 +398,5 @@ with st.sidebar:
     - **F1-score**: 78 %
     """)
 
-    # Remplacez "URL_DE_VOTRE_RAPPORT" par l'URL de publication de votre rapport Power BI
-    power_bi_report_url = "[https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi](https://app.powerbi.com/groups/me/reports/7c8fa6a9-1784-4296-b0b8-8ee6ed98f3f9/ae5f9ce7220067b35013?experience=power-bi)"
-
-    st.markdown(f"""
-        **Visualisez le tableau de bord d'analyse du churn :** <br>
-        <a href="{power_bi_report_url}" target="_blank">
-            <button style="background-color: #F2C811; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
-                Rapport Power BI
-            </button>
-        </a>
-    """, unsafe_allow_html=True)
-    st.divider()
-
 st.divider()
 st.caption("© 2025 Télécom Analytics - Tous droits réservés.")
