@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI
 from pydantic import BaseModel
 import joblib
@@ -46,11 +45,32 @@ except FileNotFoundError as e:
     model = None
     training_columns = None
 
+# Nouvelle fonction pour extraire les importances des variables
+def get_feature_importances(model, training_columns):
+    """
+    Extrait les importances des caractéristiques du modèle
+    et les formate pour un retour JSON.
+    """
+    if hasattr(model, 'feature_importances_'):
+        importances = model.feature_importances_
+        feature_names = training_columns
+
+        # Créer un DataFrame pour faciliter le tri et la visualisation
+        feature_importance_df = pd.DataFrame({
+            'Feature': feature_names,
+            'Importance': importances
+        }).sort_values(by='Importance', ascending=False)
+
+        # On retourne les 10 plus importantes sous forme de liste de dictionnaires pour l'API
+        return feature_importance_df.head(10).to_dict('records')
+    return None
+
 # Endpoint de l'API pour la prédiction
 @app.post("/predict")
 def predict_churn(data: ChurnPredictionData):
     """
-    Accepte les données d'un client et renvoie une prédiction de churn.
+    Accepte les données d'un client et renvoie une prédiction de churn,
+    ainsi que l'importance des variables.
     """
     if model is None or training_columns is None:
         return {"error": "Modèle ou colonnes d'entraînement non chargés. Vérifiez la présence des fichiers du modèle."}
@@ -58,18 +78,11 @@ def predict_churn(data: ChurnPredictionData):
     # Crée un DataFrame à partir des données de l'utilisateur
     input_df = pd.DataFrame([data.dict()])
 
-    # Le modèle XGBoost utilisé est un modèle d'arbre qui ne nécessite pas de One-Hot Encoding
-    # C'est une simplification pour cet exemple.
-    # Pour un modèle One-Hot, il faudrait une étape supplémentaire
-    # qui re-crée les colonnes comme lors de l'entraînement.
-
     # Assurer que le DataFrame d'entrée a les mêmes colonnes que le DataFrame d'entraînement
-    # C'est une étape cruciale pour que la prédiction fonctionne
     missing_cols = set(training_columns) - set(input_df.columns)
     for c in missing_cols:
         input_df[c] = 0
 
-    # On utilise un reindex pour s'assurer de l'ordre des colonnes
     input_df = input_df[training_columns]
 
     # Prédiction avec le modèle
@@ -80,10 +93,14 @@ def predict_churn(data: ChurnPredictionData):
     # Interprétation de la prédiction
     prediction_message = "Le client va se désabonner" if prediction_raw == "Yes" else "Le client va rester"
 
-    # Retourne la prédiction
+    # Récupérer les importances des variables
+    feature_importances = get_feature_importances(model, training_columns)
+
+    # Retourne la prédiction, la probabilité ET les importances des variables
     return {
         "prediction": prediction_message,
-        "probabilité": f"{confidence:.2f}%"
+        "probabilité": f"{confidence:.2f}%",
+        "feature_importances": feature_importances
     }
 
 if __name__ == "__main__":
